@@ -21,6 +21,10 @@
 		{
 			width: 95%;
 		}
+		.open-template
+		{
+			cursor:pointer;
+		}
 	</style>
 	<script type="text/javascript">
 		function GotoTreeSegment(sGuid, sType)
@@ -124,7 +128,7 @@
 					if(TemplateText.search(TemplateRegexp) > -1)
 					{
 						var ResultHTML = '<div class="alert alert-info">';
-						ResultHTML += '<a href="#" onclick="Popup(\'' + $(data).find('TEMPLATEVARIANT').attr('guid') + '\')" title="Open Template" alt="Open Template" class="icon-eye-open"></a>&nbsp;';
+						ResultHTML += '<span onclick="Popup(\'' + $(data).find('TEMPLATEVARIANT').attr('guid') + '\')" title="Open Template" alt="Open Template" class="open-template icon-eye-open"></span>&nbsp;';
 						ResultHTML += '<a title="Display Content Class in Tree" alt="Display Content Class in Tree" href="javascript:GotoTreeSegment(\'' + ToBeProcessItemGuid + '\', \'app.4015\');">' + ToBeProcessItemHeadline + '</a>';
 						ResultHTML += '</div>';
 						$('#results').append(ResultHTML);
