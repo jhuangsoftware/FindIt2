@@ -1,6 +1,5 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 	<meta http-equiv="expires" content="-1"/>
 	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
@@ -8,34 +7,12 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" >
 	<title>FindIt 2</title>
 	<link rel="stylesheet" href="css/bootstrap.min.css" />
-	<style type="text/css">
-		body
-		{
-			padding: 10px;
-		}
-		#search-result-template
-		{
-			display: none;
-		}
-		input
-		{
-			width: 95%;
-		}
-		.open-template
-		{
-			cursor:pointer;
-		}
-	</style>
-	<script type="text/javascript">
-		function GotoTreeSegment(sGuid, sType)
-		{
-			top.opener.parent.parent.parent.ioTreeIFrame.frames.ioTreeFrames.frames.ioTree.ShowInfoLabel();
-			top.opener.parent.frames.ioTreeData.location='../../ioRDLevel1.asp?Action=GotoTreeSegment&Guid=' + sGuid + '&Type=' + sType + '&CalledFromRedDot=0';
-		}
-	</script>
-	<script type="text/javascript" src="js/jquery-1.8.3.min.js"></script>
+	<link rel="stylesheet" href="css/custom.css" />
+	<script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
 	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/handlebars-v2.0.0.js"></script>
 	<script type="text/javascript" src="rqlconnector/Rqlconnector.js"></script>
+	<script type="text/javascript" src="js/app.js"></script>
 	<script type="text/javascript">
 		var LoginGuid = '<%= session("loginguid") %>';
 		var SessionKey = '<%= session("sessionkey") %>';
@@ -43,154 +20,96 @@
 		var SearchText;
 		
 		$(document).ready(function() {
-			ListContentClassFolders();
-			
-			$('#search-option-dialog').modal('show');
+			var FindItObj = new FindIt(RqlConnectorObj);
+
 		});
-		
-		function Find()
-		{
-			SearchText = $('#search-field').val();
-			SearchText = $.trim(SearchText);
-			
-			if(SearchText == '')
-			{
-				alert('Field under "Find what" cannot be empty.');
-				return;
-			}
-			
-			$('#search-option-dialog').modal('hide');
 
-			// all or specific content class
-			var strRQLXML;
-			var FolderGuid = $('#content-class-folders option:selected').val();
-			if(FolderGuid == '')
-			{
-				strRQLXML = '<TEMPLATES folderguid="" action="list"/>';
-			}
-			else
-			{
-				strRQLXML = '<TEMPLATELIST action="load" folderguid="' + FolderGuid + '"/>';
-			}
-			
-			RqlConnectorObj.SendRql(strRQLXML, false, function(data){
-				var TempItems = new Array();
-			
-				$(data).find('TEMPLATE').each(function(){
-					var ContentClassObj = new Object();
-					ContentClassObj.guid = $(this).attr('guid');
-					ContentClassObj.name = $(this).attr('name');
-					
-					TempItems.push(ContentClassObj);
-				});
-				
-				$('#searchresults').show();
-				
-				Findtemplate(TempItems);
-			});
-		}
-		
-		function isCaseSensitive()
-		{
-			return $('#check-box-case-sensitive').is(':checked');
-		}
-		
-		function Findtemplate(InputArray)
-		{
-			var ToBeProcessItem = InputArray.shift();
-
-			if(ToBeProcessItem != null)
-			{
-				// parse and get guid
-				ToBeProcessItemGuid = ToBeProcessItem.guid;
-				ToBeProcessItemHeadline = ToBeProcessItem.name;
-				
-				// change status text
-				$('#status').html('<div>' + InputArray.length + ' remaining</div><div>Searching in ' + ToBeProcessItemHeadline + '</div>');
-				
-				var strRQLXML = '<PROJECT><TEMPLATE action="load" guid="' + ToBeProcessItemGuid + '"><TEMPLATEVARIANTS readonly="1" action="loadfirst"/></TEMPLATE></PROJECT>';
-
-				RqlConnectorObj.SendRql(strRQLXML, false, function(data){
-					var TemplateText = $(data).find('TEMPLATEVARIANT').text();
-					
-					// search for placeholders
-					var TemplateRegexp;
-					
-					if(isCaseSensitive())
-					{
-						TemplateRegexp = new RegExp(SearchText, '');
-					}
-					else
-					{
-						TemplateRegexp = new RegExp(SearchText, 'i');
-					}
-
-					if(TemplateText.search(TemplateRegexp) > -1)
-					{
-						var ResultHTML = '<div class="alert alert-info">';
-						ResultHTML += '<span onclick="Popup(\'' + $(data).find('TEMPLATEVARIANT').attr('guid') + '\')" title="Open Template" alt="Open Template" class="open-template icon-eye-open"></span>&nbsp;';
-						ResultHTML += '<a title="Display Content Class in Tree" alt="Display Content Class in Tree" href="javascript:GotoTreeSegment(\'' + ToBeProcessItemGuid + '\', \'app.4015\');">' + ToBeProcessItemHeadline + '</a>';
-						ResultHTML += '</div>';
-						$('#results').append(ResultHTML);
-					}
-					
-					Findtemplate(InputArray);
-				});
-			}
-			else
-			{
-				$('#status').html('<div>Search completed</div><div>' + $('#results .alert').length + ' found</div>');
-				$('#status').addClass('alert-success');
-			}
-		}
-		
-		function ListContentClassFolders()
-		{
-			var strRQLXML = '<PROJECT><FOLDERS action="list" foldertype="1"/></PROJECT>';
-			
-			RqlConnectorObj.SendRql(strRQLXML, false, function(data){
-				$(data).find('FOLDER').each(function(){
-					$('#content-class-folders').append('<option value="' + $(this).attr('guid') + '">' + $(this).attr('name') + '</option>');
-				});
-			});
-		}
-		
-		function Popup(TemplateGuid)
-		{
-			var PopUpUrl = '/CMS/ioTemplateEditor/ioTemplateEditor.asp?ReadOnly=1&FlatStyle=1&TemplateVariantGuid=' + TemplateGuid;
-			window.open(PopUpUrl, 'CodeViewer', 'width=800,height=600,scrollbars=no,resizable=yes'); 
-		}
 	</script>
-</head>
-<body>
-	<div id="search-option-dialog" class="modal hide fade" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-		<div class="modal-header">
-			<h3 id="myModalLabel">FindIt 2 - a template code search tool</h3>
-		</div>
-		<div class="modal-body">
-			<div class="form-horizontal">
-				<div class="control-group">
-					<label class="control-label" for="search-field">Find what</label>
-					<div class="controls">
-						<input type="text" id="search-field"/>
-						<label class="checkbox" for="check-box-case-sensitive"><input type="checkbox" id="check-box-case-sensitive"/> Case sensitive</label>
+	
+	<script id="template-search-option-dialog" type="text/x-handlebars-template" data-container="#search-option-dialog" data-action="replace">
+		<div class="modal fade" data-backdrop="static" role="dialog">
+			<div class="modal-header">
+				<h3>FindIt 2 - a template code search tool</h3>
+			</div>
+			<div class="modal-body">
+				<div class="form-horizontal">
+					<div class="control-group">
+						<label class="control-label">Find what</label>
+						<div class="controls">
+							<input class="input-block-level" type="text" />
+							<label class="checkbox" ><input type="checkbox" /> Case sensitive</label>
+						</div>
 					</div>
-				</div>
-				<div class="control-group">
-					<label class="control-label" for="content-class-folders">In Content Class Folder</label>
-					<div class="controls">
-						<select id="content-class-folders">
-							<option selected="selected" value="">All Content Class Folders</option>
-						</select>
+					<div class="control-group">
+						<label class="control-label">In Content Class Folder</label>
+						<div class="controls content-class-folders">
+							<div class="alert">Loading...</div>
+						</div>
 					</div>
 				</div>
 			</div>
+			<div class="modal-footer">
+				<div class="btn btn-success find">Find</div>
+			</div>
 		</div>
-		<div class="modal-footer">
-			<a href="#" class="btn btn-success" onclick="Find()">Find</a>
+	</script>
+	
+	<script id="template-code-dialog" type="text/x-handlebars-template" data-container="#code" data-action="replace">
+		<div class="modal fade" role="dialog">
+			<div class="modal-header">
+				<h3>Code</h3>
+			</div>
+			<div class="modal-body">
+				<div class="alert">Loading</div>
+			</div>
 		</div>
+	</script>
+	
+	<script id="template-code-dialog-header" type="text/x-handlebars-template" data-container="#code .modal-header" data-action="replace">
+		<h3>{{name}}</h3>
+	</script>
+	
+	<script id="template-code-dialog-body" type="text/x-handlebars-template" data-container="#code .modal-body" data-action="replace">
+		<pre>
+			{{code}}
+		</pre>
+	</script>
+	
+	<script id="template-search-option-content-class-folders" type="text/x-handlebars-template" data-container="#search-option-dialog .content-class-folders" data-action="replace">
+		<select class="input-block-level">
+			{{#each contentclassfolders}}
+			<option value="{{guid}}">{{name}}</option>
+			{{/each}}
+		</select>
+	</script>
+	
+	<script id="template-status-processing" type="text/x-handlebars-template" data-container="#status" data-action="replace">
+		<div class="alert">
+			<h4>Searching {{name}}</h4>
+			{{currentcount}}/{{totalcount}} content classes.
+		</div>
+	</script>
+	
+	<script id="template-status-completed" type="text/x-handlebars-template" data-container="#status" data-action="replace">
+		<div class="alert alert-success">
+			<h4>Search completed</h4>
+			Search term "{{searchtext}}" found in {{contentclassesfound}} content classes.
+		</div>
+	</script>
+	
+	<script id="template-result" type="text/x-handlebars-template" data-container="#results" data-action="append">
+		<div class="alert alert-info">
+			<div class="btn open-template" data-guid="{{guid}}"><span title="Open Template" alt="Open Template" class="icon-eye-open"></span></div>
+			<div class="btn btn-link content-class-in-tree" data-guid="{{guid}}" data-treetype="app.4015" title="Display Content Class in Tree" alt="Display Content Class in Tree">{{name}}</div>
+		</div>
+	</script>
+</head>
+<body>
+	<div id="search-option-dialog">
 	</div>
-    <div class="alert" id="status">
+	<div id="code">
+	</div>
+    <div id="status">
     </div>
 	<div id="results">
 	</div>
